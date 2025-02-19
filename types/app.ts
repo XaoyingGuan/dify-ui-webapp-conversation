@@ -2,6 +2,12 @@ import type { Annotation } from './log'
 import type { Locale } from '@/i18n'
 import type { ThoughtItem } from '@/app/components/chat/type'
 
+export type FileParameter = {
+  allowed_file_types: string[]
+  allowed_file_extensions: string[]
+  allowed_file_upload_methods: string[]
+  number_limits: number
+}
 export type PromptVariable = {
   key: string
   name: string
@@ -10,6 +16,7 @@ export type PromptVariable = {
   options?: string[]
   max_length?: number
   required: boolean
+  payload?: FileParameter
 }
 
 export type PromptConfig = {
@@ -120,13 +127,29 @@ export enum TransferMethod {
   local_file = 'local_file',
   remote_url = 'remote_url',
 }
-
+export type SystemParameters = {
+  image_file_size_limit?: number | string // default is 10MB
+  file_size_limit: number // default is 15MB
+  audio_file_size_limit?: number // default is 50MB
+  video_file_size_limit?: number // default is 100MB
+  workflow_file_upload_limit?: number // default is 10
+}
+export type FileUploadConfig = {
+  batch_count_limit: number
+  image_file_size_limit?: number | string // default is 10MB
+  file_size_limit: number // default is 15MB
+  audio_file_size_limit?: number // default is 50MB
+  video_file_size_limit?: number // default is 100MB
+  workflow_file_upload_limit?: number // default is 10
+}
 export type VisionSettings = {
   enabled: boolean
+  allowed_file_types: string[]
+  allowed_file_extensions: string[]
   number_limits: number
   detail: Resolution
-  transfer_methods: TransferMethod[]
-  image_file_size_limit?: number | string
+  allowed_file_upload_methods: TransferMethod[]
+  fileUploadConfig?: FileUploadConfig
 }
 
 export type ImageFile = {
@@ -148,7 +171,16 @@ export type VisionFile = {
   upload_file_id: string
   belongs_to?: string
 }
-
+export type FileResponse = {
+  related_id: string
+  extension: string
+  filename: string
+  size: number
+  mime_type: string
+  transfer_method: TransferMethod
+  type: string
+  url: string
+}
 export enum BlockEnum {
   Start = 'start',
   End = 'end',
@@ -219,6 +251,13 @@ export enum CodeLanguage {
   python3 = 'python3',
   javascript = 'javascript',
   json = 'json',
+}
+export enum SupportUploadFileTypes {
+  image = 'image',
+  document = 'document',
+  audio = 'audio',
+  video = 'video',
+  custom = 'custom',
 }
 // TYPE of File Upload API Response
 export type RemoteFileResponseType = {
