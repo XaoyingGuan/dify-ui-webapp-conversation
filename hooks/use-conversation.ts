@@ -28,7 +28,7 @@ function useConversation() {
 
   const isNewConversation = currConversationId === '-1'
   // input can be updated by user
-  const [newConversationInputs, setNewConversationInputs] = useState<Record<string, any> | null>(null)
+  const [newConversationInputs, setNewConversationInputs] = useState<Record<string, any> | null>({})
   const resetNewConversationInputs = () => {
     if (!newConversationInputs)
       return
@@ -38,7 +38,7 @@ function useConversation() {
       })
     }))
   }
-  const [existConversationInputs, setExistConversationInputs] = useState<Record<string, any> | null>(null)
+  const [existConversationInputs, setExistConversationInputs] = useState<Record<string, any> | null>({})
   const currInputs = isNewConversation ? newConversationInputs : existConversationInputs
   const setCurrInputs = isNewConversation ? setNewConversationInputs : setExistConversationInputs
 
