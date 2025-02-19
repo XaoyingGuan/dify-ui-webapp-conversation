@@ -23,7 +23,10 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
 
       if (item['text-input'])
         return ['string', item['text-input']]
-
+      if (item['file'])
+        return ['file', item['file']]
+      if (item['file-list'])
+        return ['file-list', item['file-list']]
       if (item.number)
         return ['number', item.number]
 
@@ -47,6 +50,36 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
         required: content.required,
         type,
         options: [],
+      })
+    }
+    else if (type === 'file') {
+      promptVariables.push({
+        key: content.variable,
+        name: content.label,
+        required: content.required,
+        type,
+        options: content.options,
+        payload: {
+          allowed_file_extensions: content['allowed_file_extensions'],
+          allowed_file_types: content['allowed_file_types'],
+          allowed_file_upload_methods: content['allowed_file_upload_methods'],
+          number_limits: 1
+        }
+      })
+    }
+    else if (type === 'file-list') {
+      promptVariables.push({
+        key: content.variable,
+        name: content.label,
+        required: content.required,
+        type,
+        options: content.options,
+        payload: {
+          allowed_file_extensions: content['allowed_file_extensions'],
+          allowed_file_types: content['allowed_file_types'],
+          allowed_file_upload_methods: content['allowed_file_upload_methods'],
+          number_limits: content.max_length
+        }
       })
     }
     else {
