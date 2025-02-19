@@ -1,6 +1,6 @@
 import type { IOnCompleted, IOnData, IOnError, IOnFile, IOnMessageEnd, IOnMessageReplace, IOnNodeFinished, IOnNodeStarted, IOnThought, IOnWorkflowFinished, IOnWorkflowStarted } from './base'
 import { get, post, ssePost } from './base'
-import type { Feedbacktype } from '@/types/app'
+import type { Feedbacktype, RemoteFileResponseType } from '@/types/app'
 
 export const sendChatMessage = async (
   body: Record<string, any>,
@@ -59,4 +59,8 @@ export const updateFeedback = async ({ url, body }: { url: string; body: Feedbac
 
 export const generationConversationName = async (id: string) => {
   return post(`conversations/${id}/name`, { body: { auto_generate: true } })
+}
+
+export const uploadRemoteFile = async (url: string): Promise<RemoteFileResponseType> => {
+  return (await post('/remote-files/upload', { body: { url } })) as RemoteFileResponseType
 }

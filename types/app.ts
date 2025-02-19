@@ -220,3 +220,14 @@ export enum CodeLanguage {
   javascript = 'javascript',
   json = 'json',
 }
+// TYPE of File Upload API Response
+export type RemoteFileResponseType = {
+  id: string
+  name: string
+  size: number
+  extension?: string
+  url: string
+  mime_type?: string
+  created_by?: string
+  created_at?: number
+}
