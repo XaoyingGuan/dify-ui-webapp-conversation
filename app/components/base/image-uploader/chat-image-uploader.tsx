@@ -40,7 +40,7 @@ const UploadOnlyFromLocal: FC<UploadOnlyFromLocalProps> = ({
 }
 
 type UploaderButtonProps = {
-  methods: VisionSettings['transfer_methods']
+  methods: VisionSettings['allowed_file_upload_methods']
   onUpload: (imageFile: ImageFile) => void
   disabled?: boolean
   limit?: number
@@ -125,24 +125,24 @@ const ChatImageUploader: FC<ChatImageUploaderProps> = ({
   onUpload,
   disabled,
 }) => {
-  const onlyUploadLocal = settings.transfer_methods.length === 1 && settings.transfer_methods[0] === TransferMethod.local_file
+  const onlyUploadLocal = settings.allowed_file_upload_methods.length === 1 && settings.allowed_file_upload_methods[0] === TransferMethod.local_file
 
   if (onlyUploadLocal) {
     return (
       <UploadOnlyFromLocal
         onUpload={onUpload}
         disabled={disabled}
-        limit={+settings.image_file_size_limit!}
+        limit={+settings.fileUploadConfig?.image_file_size_limit!}
       />
     )
   }
 
   return (
     <UploaderButton
-      methods={settings.transfer_methods}
+      methods={settings.allowed_file_upload_methods}
       onUpload={onUpload}
       disabled={disabled}
-      limit={+settings.image_file_size_limit!}
+      limit={+settings.fileUploadConfig?.image_file_size_limit!}
     />
   )
 }
