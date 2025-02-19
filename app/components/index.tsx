@@ -22,6 +22,7 @@ import AppUnavailable from '@/app/components/app-unavailable'
 import { API_KEY, APP_ID, APP_INFO, isShowPrompt, promptTemplate } from '@/config'
 import type { Annotation as AnnotationType } from '@/types/log'
 import { addFileInfos, sortAgentSorts } from '@/utils/tools'
+import { FileEntity } from './base/file-uploader/types'
 
 export type IMainProps = {
   params: any
@@ -46,9 +47,11 @@ const Main: FC<IMainProps> = () => {
     enabled: false,
     number_limits: 2,
     detail: Resolution.low,
-    transfer_methods: [TransferMethod.local_file],
-  })
+    allowed_file_upload_methods: [TransferMethod.local_file],
+    allowed_file_types: [],
+    allowed_file_extensions: []
 
+  })
   useEffect(() => {
     if (APP_INFO?.title)
       document.title = `${APP_INFO.title} - Powered by Dify`
@@ -249,8 +252,7 @@ const Main: FC<IMainProps> = () => {
           prompt_variables,
         } as PromptConfig)
         setVisionConfig({
-          ...file_upload?.image,
-          image_file_size_limit: system_parameters?.system_parameters || 0,
+          ...file_upload
         })
         setConversationList(conversations as ConversationItem[])
 
@@ -331,8 +333,50 @@ const Main: FC<IMainProps> = () => {
       notify({ type: 'info', message: t('app.errorMessage.waitForResponse') })
       return
     }
+    let inputs: Record<string, any> = currInputs ? currInputs : {}
+    if (promptConfig?.prompt_variables) {
+      for (var i = 0; i < promptConfig.prompt_variables.length; i++) {
+        const item = promptConfig.prompt_variables[i]
+        if (item.type === 'file') {
+          if (inputs[item.key]) {
+            if (inputs[item.key].length > 0) {
+              const fileInfo: FileEntity = inputs[item.key][0]
+              inputs[item.key] = {
+                transfer_method: fileInfo.transferMethod,
+                type: fileInfo.supportFileType,
+                upload_file_id: fileInfo.uploadedId,
+                url: fileInfo.url
+              }
+            } else {
+              inputs[item.key] = {}
+            }
+          } else {
+            inputs[item.key] = {}
+          }
+        } else if (item.type === 'file-list') {
+          if (inputs[item.key]) {
+            if (inputs[item.key].length > 0) {
+              let files = inputs[item.key].map((fileInfo: FileEntity) => {
+                return {
+                  transfer_method: fileInfo.transferMethod,
+                  type: fileInfo.supportFileType,
+                  upload_file_id: fileInfo.uploadedId,
+                  url: fileInfo.url
+                }
+              })
+              inputs[item.key] = files
+            } else {
+              inputs[item.key] = []
+            }
+          } else {
+            inputs[item.key] = []
+          }
+        }
+      }
+    }
+
     const data: Record<string, any> = {
-      inputs: currInputs,
+      inputs: inputs,
       query: message,
       conversation_id: isNewConversation ? null : currConversationId,
     }
