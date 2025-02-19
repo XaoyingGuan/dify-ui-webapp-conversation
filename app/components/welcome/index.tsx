@@ -5,11 +5,13 @@ import { useTranslation } from 'react-i18next'
 import TemplateVarPanel, { PanelTitle, VarOpBtnGroup } from '../value-panel'
 import s from './style.module.css'
 import { AppInfoComp, ChatBtn, EditBtn, FootLogo, PromptTemplate } from './massive-component'
-import type { AppInfo, PromptConfig } from '@/types/app'
+import { PromptVariable, TransferMethod, type AppInfo, type PromptConfig } from '@/types/app'
+import { FileUpload, type FileEntity } from '@/app/components/base/file-uploader/types'
 import Toast from '@/app/components/base/toast'
 import Select from '@/app/components/base/select'
 import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 
+import FileUploaderInAttachmentWrapper from '@/app/components/base/file-uploader/file-uploader-in-attachment'
 // regex to match the {{}} and replace it with a span
 const regex = /\{\{([^}]+)\}\}/g
 
@@ -39,38 +41,40 @@ const Welcome: FC<IWelcomeProps> = ({
   const { t } = useTranslation()
   const hasVar = promptConfig.prompt_variables.length > 0
   const [isFold, setIsFold] = useState<boolean>(true)
-  const [inputs, setInputs] = useState<Record<string, any>>((() => {
-    if (hasSetInputs)
-      return savedInputs
-
-    const res: Record<string, any> = {}
-    if (promptConfig) {
-      promptConfig.prompt_variables.forEach((item) => {
-        res[item.key] = ''
-      })
-    }
-    return res
-  })())
-  useEffect(() => {
-    if (!savedInputs) {
-      const res: Record<string, any> = {}
-      if (promptConfig) {
-        promptConfig.prompt_variables.forEach((item) => {
-          res[item.key] = ''
-        })
+  if (!savedInputs) {
+    savedInputs = {}
+    onInputsChange(savedInputs)
+  }
+  if (promptConfig) {
+    promptConfig.prompt_variables.forEach((item) => {
+      if (item.type === 'number') {
+        if (!savedInputs[item.key])
+          savedInputs[item.key] = 0
+      } else if (item.type === 'file' || item.type === 'file-list') {
+        if (!savedInputs[item.key])
+          savedInputs[item.key] = []
+      } else {
+        if (!savedInputs[item.key])
+          savedInputs[item.key] = ''
       }
-      setInputs(res)
-    }
-    else {
-      setInputs(savedInputs)
-    }
-  }, [savedInputs])
 
+    })
+
+  }
+
+
+
+  const [inputed, setInputed] = useState<boolean>(false)
+  const handleInputChanged = (key: string, value: any) => {
+    savedInputs[key] = value
+    setInputed(!inputed)
+    onInputsChange(savedInputs)
+  }
   const highLightPromoptTemplate = (() => {
     if (!promptConfig)
       return ''
     const res = promptConfig.prompt_template.replace(regex, (match, p1) => {
-      return `<span class='text-gray-800 font-bold'>${inputs?.[p1] ? inputs?.[p1] : match}</span>`
+      return `<span class='text-gray-800 font-bold'>${savedInputs?.[p1] ? savedInputs?.[p1] : match}</span>`
     })
     return res
   })()
@@ -89,6 +93,39 @@ const Welcome: FC<IWelcomeProps> = ({
   }
 
   const renderInputs = () => {
+
+    const renderFile = (item: PromptVariable) => {
+      const fileConfig: FileUpload = {
+        allowed_file_types: item.payload ? item.payload['allowed_file_types'] : [],
+        allowed_file_extensions: item.payload ? item.payload['allowed_file_extensions'] : [],
+        allowed_file_upload_methods: [TransferMethod.local_file],
+        number_limits: 1
+      }
+      return (<FileUploaderInAttachmentWrapper
+        fileConfig={fileConfig}
+        value={savedInputs[item.key] ? savedInputs[item.key] : []}
+        onChange={files => { handleInputChanged(item.key, files) }}>
+
+      </FileUploaderInAttachmentWrapper>)
+    }
+
+    const renderFiles = (item: PromptVariable) => {
+      const onFilesChanged = (files: FileEntity[]) => {
+        handleInputChanged(item.key, files)
+      }
+      const fileConfig: FileUpload = {
+        allowed_file_types: item.payload ? item.payload['allowed_file_types'] : [],
+        allowed_file_extensions: item.payload ? item.payload['allowed_file_extensions'] : [],
+        allowed_file_upload_methods: [TransferMethod.local_file],
+        number_limits: item.payload ? (item.payload.number_limits ? item.payload.number_limits : 2) : 2
+      }
+      return (<FileUploaderInAttachmentWrapper
+        fileConfig={fileConfig}
+        value={savedInputs[item.key] ? savedInputs[item.key] : []}
+        onChange={onFilesChanged}>
+
+      </FileUploaderInAttachmentWrapper>)
+    }
     return (
       <div className='space-y-3'>
         {promptConfig.prompt_variables.map(item => (
@@ -98,8 +135,8 @@ const Welcome: FC<IWelcomeProps> = ({
               && (
                 <Select
                   className='w-full'
-                  defaultValue={inputs?.[item.key]}
-                  onSelect={(i) => { setInputs({ ...inputs, [item.key]: i.value }) }}
+                  defaultValue={savedInputs?.[item.key]}
+                  onSelect={(i) => { handleInputChanged(item.key, i.value) }}
                   items={(item.options || []).map(i => ({ name: i, value: i }))}
                   allowSearch={false}
                   bgClassName='bg-gray-50'
@@ -108,8 +145,8 @@ const Welcome: FC<IWelcomeProps> = ({
             {item.type === 'string' && (
               <input
                 placeholder={`${item.name}${!item.required ? `(${t('app.variableTable.optional')})` : ''}`}
-                value={inputs?.[item.key] || ''}
-                onChange={(e) => { setInputs({ ...inputs, [item.key]: e.target.value }) }}
+                value={savedInputs?.[item.key] || ''}
+                onChange={(e) => { handleInputChanged(item.key, e.target.value) }}
                 className={'w-full flex-grow py-2 pl-3 pr-3 box-border rounded-lg bg-gray-50'}
                 maxLength={item.max_length || DEFAULT_VALUE_MAX_LEN}
               />
@@ -118,29 +155,45 @@ const Welcome: FC<IWelcomeProps> = ({
               <textarea
                 className="w-full h-[104px] flex-grow py-2 pl-3 pr-3 box-border rounded-lg bg-gray-50"
                 placeholder={`${item.name}${!item.required ? `(${t('app.variableTable.optional')})` : ''}`}
-                value={inputs?.[item.key] || ''}
-                onChange={(e) => { setInputs({ ...inputs, [item.key]: e.target.value }) }}
+                value={savedInputs?.[item.key] || ''}
+                onChange={(e) => { handleInputChanged(item.key, e.target.value) }}
               />
             )}
             {item.type === 'number' && (
               <input
                 type="number"
                 className="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 "
-                placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
-                value={inputs[item.key]}
-                onChange={(e) => { onInputsChange({ ...inputs, [item.key]: e.target.value }) }}
+                value={savedInputs[item.key]}
+                onChange={(e) => { handleInputChanged(item.key, e.target.value) }}
               />
             )}
+            {item.type === 'file' && (
+              renderFile(item)
+            )}
+            {item.type === 'file-list' && (
+              renderFiles(item)
+            )}
+
           </div>
-        ))}
-      </div>
+        ))
+        }
+      </div >
     )
   }
 
   const canChat = () => {
-    const inputLens = Object.values(inputs).length
+    const inputLens = Object.values(savedInputs).length
     const promptVariablesLens = promptConfig.prompt_variables.length
-    const emptyInput = inputLens < promptVariablesLens || Object.values(inputs).filter(v => v === '').length > 0
+    let emptyInput = inputLens < promptVariablesLens
+    if (!emptyInput) {
+      for (var i = 0; i < promptVariablesLens; i++) {
+        if (promptConfig.prompt_variables[i].required) {
+          if (savedInputs[promptConfig.prompt_variables[i].key] === '') {
+            emptyInput = true
+          }
+        }
+      }
+    }
     if (emptyInput) {
       logError(t('app.errorMessage.valueOfVarRequired'))
       return false
@@ -152,7 +205,7 @@ const Welcome: FC<IWelcomeProps> = ({
     if (!canChat())
       return
 
-    onStartChat(inputs)
+    onStartChat(savedInputs)
   }
 
   const renderNoVarPanel = () => {
@@ -214,11 +267,11 @@ const Welcome: FC<IWelcomeProps> = ({
           if (!canChat())
             return
 
-          onInputsChange(inputs)
+          onInputsChange(savedInputs)
           setIsFold(true)
         }}
         onCancel={() => {
-          setInputs(savedInputs)
+          onInputsChange(savedInputs)
           setIsFold(true)
         }}
       />
